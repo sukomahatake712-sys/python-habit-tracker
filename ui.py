@@ -1,21 +1,8 @@
-"""
-ui.py - Desktop GUI using Pure Python Tkinter
-
-Module Map:
-- Module 1: Fundamentals (Variables, Layout, Geometry)
-- Module 8: Control Flow (UI event handling, form validation, dynamic list rendering)
-- Module 9: Functions (Callbacks, closures, component generators)
-- Module 11: Array Data Structures (2D Heatmap nested loop rendering with Canvas)
-- Module 12: OOP (GUI Dialog classes, Custom Canvas widgets)
-"""
-
 import tkinter as tk
 from tkinter import ttk, messagebox
 import calendar
 from datetime import date
-from typing import Optional, Callable
-from tracker import HabitTracker
-from habit import BooleanHabit, CountableHabit
+from habit import HabitTracker, CountableHabit
 
 
 # Color Palette (Clean Modern Dark/Teal Theme)
@@ -37,9 +24,7 @@ CAL_NONE = "#363852"
 
 
 class AddHabitDialog(tk.Toplevel):
-    """Modal dialog for creating a new Habit."""
-
-    def __init__(self, parent: tk.Tk, on_submit_callback: Callable):
+    def __init__(self, parent, on_submit):
         super().__init__(parent)
         self.title("Add New Habit")
         self.geometry("420x460")
@@ -48,7 +33,7 @@ class AddHabitDialog(tk.Toplevel):
         self.transient(parent)
         self.grab_set()
 
-        self.on_submit = on_submit_callback
+        self.on_submit = on_submit
         self.habit_type_var = tk.StringVar(value="boolean")
 
         self._build_ui()
@@ -72,19 +57,16 @@ class AddHabitDialog(tk.Toplevel):
         )
         header.pack(pady=(20, 15))
 
-        # Habit Name
         tk.Label(self, text="Habit Name:", font=("Segoe UI", 10), bg=BG_COLOR, fg=TEXT_MUTED).pack(anchor="w", padx=30)
         self.name_entry = tk.Entry(self, font=("Segoe UI", 11), bg=CARD_BG, fg=TEXT_MAIN, insertbackground=TEXT_MAIN, relief="flat", highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.name_entry.pack(fill="x", padx=30, pady=(4, 12), ipady=4)
         self.name_entry.focus()
 
-        # Category
         tk.Label(self, text="Category:", font=("Segoe UI", 10), bg=BG_COLOR, fg=TEXT_MUTED).pack(anchor="w", padx=30)
         self.cat_entry = tk.Entry(self, font=("Segoe UI", 11), bg=CARD_BG, fg=TEXT_MAIN, insertbackground=TEXT_MAIN, relief="flat", highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.cat_entry.insert(0, "Health")
         self.cat_entry.pack(fill="x", padx=30, pady=(4, 12), ipady=4)
 
-        # Habit Type Radio Buttons
         tk.Label(self, text="Habit Type:", font=("Segoe UI", 10), bg=BG_COLOR, fg=TEXT_MUTED).pack(anchor="w", padx=30)
         type_frame = tk.Frame(self, bg=BG_COLOR)
         type_frame.pack(fill="x", padx=30, pady=(4, 12))
@@ -119,9 +101,7 @@ class AddHabitDialog(tk.Toplevel):
         )
         rb2.pack(side="left")
 
-        # Countable Options Frame (hidden by default)
         self.countable_frame = tk.Frame(self, bg=BG_COLOR)
-        
         tk.Label(self.countable_frame, text="Daily Target Count:", font=("Segoe UI", 10), bg=BG_COLOR, fg=TEXT_MUTED).pack(anchor="w")
         self.target_entry = tk.Entry(self.countable_frame, font=("Segoe UI", 11), bg=CARD_BG, fg=TEXT_MAIN, insertbackground=TEXT_MAIN, relief="flat", highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.target_entry.insert(0, "8")
@@ -132,7 +112,6 @@ class AddHabitDialog(tk.Toplevel):
         self.unit_entry.insert(0, "glasses")
         self.unit_entry.pack(fill="x", pady=(4, 12), ipady=4)
 
-        # Buttons Frame
         btn_frame = tk.Frame(self, bg=BG_COLOR)
         btn_frame.pack(fill="x", padx=30, pady=(20, 10))
 
@@ -191,19 +170,16 @@ class AddHabitDialog(tk.Toplevel):
                 return
             unit = self.unit_entry.get().strip() or "times"
 
-        success = self.on_submit(name, cat, h_type, target, unit)
-        if success:
+        if self.on_submit(name, cat, h_type, target, unit):
             self.destroy()
 
 
 class HabitDetailDialog(tk.Toplevel):
-    """Detailed modal view for a Habit, showing streaks and 12-week Canvas Heatmap."""
-
-    def __init__(self, parent: tk.Tk, tracker: HabitTracker, habit_name: str, on_update_callback: Callable):
+    def __init__(self, parent, tracker, habit_name, on_update):
         super().__init__(parent)
         self.tracker = tracker
         self.habit_name = habit_name
-        self.on_update = on_update_callback
+        self.on_update = on_update
 
         self.title(f"Habit Details — {habit_name}")
         self.geometry("620x520")
@@ -219,7 +195,6 @@ class HabitDetailDialog(tk.Toplevel):
             self.destroy()
             return
 
-        # Top Bar
         header = tk.Frame(self, bg=BG_COLOR)
         header.pack(fill="x", padx=25, pady=(20, 10))
 
@@ -229,29 +204,24 @@ class HabitDetailDialog(tk.Toplevel):
         name_lbl = tk.Label(header, text=stats_data["name"], font=("Segoe UI", 18, "bold"), fg=TEXT_MAIN, bg=BG_COLOR)
         name_lbl.pack(anchor="w")
 
-        # Stats Cards Row
         stats_row = tk.Frame(self, bg=BG_COLOR)
         stats_row.pack(fill="x", padx=25, pady=10)
 
-        self._create_stat_badge(stats_row, f"🔥 {stats_data['current_streak']} days", "Current Streak", side="left")
-        self._create_stat_badge(stats_row, f"⭐ {stats_data['best_streak']} days", "Best Streak", side="left")
-        self._create_stat_badge(stats_row, f"🎯 {stats_data['completion_rate_30d']}%", "30-Day Rate", side="left")
-        self._create_stat_badge(stats_row, f"📅 {stats_data['total_completions']}", "Total Days", side="left")
+        self._create_stat_badge(stats_row, f"{stats_data['current_streak']} days", "Current Streak", side="left")
+        self._create_stat_badge(stats_row, f"{stats_data['best_streak']} days", "Best Streak", side="left")
+        self._create_stat_badge(stats_row, f"{stats_data['completion_rate_30d']}%", "30-Day Rate", side="left")
+        self._create_stat_badge(stats_row, f"{stats_data['total_completions']}", "Total Days", side="left")
 
-        # Heatmap Section (Nested Loop & 2D Matrix showcase)
         heat_section = tk.Frame(self, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER_COLOR)
         heat_section.pack(fill="both", expand=True, padx=25, pady=15)
 
         heat_header = tk.Label(heat_section, text="Consistency Heatmap (Last 12 Weeks)", font=("Segoe UI", 11, "bold"), bg=CARD_BG, fg=TEXT_MAIN)
         heat_header.pack(anchor="w", padx=15, pady=(12, 6))
 
-        # Canvas drawing grid
         canvas = tk.Canvas(heat_section, bg=CARD_BG, height=160, highlightthickness=0)
         canvas.pack(fill="both", expand=True, padx=15, pady=(0, 10))
-
         self._draw_heatmap(canvas, stats_data["heatmap_matrix"])
 
-        # Actions Row
         btn_row = tk.Frame(self, bg=BG_COLOR)
         btn_row.pack(fill="x", padx=25, pady=(0, 20))
 
@@ -283,18 +253,14 @@ class HabitDetailDialog(tk.Toplevel):
         )
         close_btn.pack(side="right")
 
-    def _create_stat_badge(self, parent: tk.Widget, value: str, label: str, side="left"):
+    def _create_stat_badge(self, parent, value, label, side="left"):
         card = tk.Frame(parent, bg=CARD_BG, padx=12, pady=8, highlightthickness=1, highlightbackground=BORDER_COLOR)
         card.pack(side=side, padx=(0, 8), fill="x", expand=True)
 
         tk.Label(card, text=value, font=("Segoe UI", 13, "bold"), fg=TEXT_MAIN, bg=CARD_BG).pack()
         tk.Label(card, text=label, font=("Segoe UI", 8), fg=TEXT_MUTED, bg=CARD_BG).pack()
 
-    def _draw_heatmap(self, canvas: tk.Canvas, matrix: list):
-        """
-        Draws 7 rows x 12 columns matrix of squares on the Canvas.
-        Showcases nested loops (Control Flow) and 2D arrays (Array data structures).
-        """
+    def _draw_heatmap(self, canvas, matrix):
         cell_size = 14
         gap = 4
         start_x = 40
@@ -305,7 +271,6 @@ class HabitDetailDialog(tk.Toplevel):
             y = start_y + row * (cell_size + gap)
             canvas.create_text(start_x - 15, y + cell_size / 2, text=lbl, fill=TEXT_MUTED, font=("Segoe UI", 8))
 
-        # Nested iteration over rows and cols
         for row in range(len(matrix)):
             for col in range(len(matrix[row])):
                 x1 = start_x + col * (cell_size + gap)
@@ -325,16 +290,10 @@ class HabitDetailDialog(tk.Toplevel):
 
 
 class CalendarView(tk.Frame):
-    """
-    Dedicated Interactive Monthly Calendar View.
-    Shows for every day which habits were completed and which were not.
-    Allows clicking any date to inspect details or toggle habit completions.
-    """
-
-    def __init__(self, parent: tk.Widget, tracker: HabitTracker, on_update_callback: Callable):
+    def __init__(self, parent, tracker, on_update):
         super().__init__(parent, bg=BG_COLOR)
         self.tracker = tracker
-        self.on_update = on_update_callback
+        self.on_update = on_update
 
         today = date.today()
         self.year = today.year
@@ -562,291 +521,3 @@ class CalendarView(tk.Frame):
         self.on_update()
         self.render_month()
 
-
-class StreakKeeperApp:
-    """Main desktop application window with Tabbed Navigation (Habits List & Calendar View)."""
-
-    def __init__(self, root: tk.Tk, tracker: HabitTracker):
-        self.root = root
-        self.tracker = tracker
-        self.root.title("StreakKeeper — Daily Habit Tracker & Calendar")
-        self.root.geometry("760x760")
-        self.root.minsize(700, 660)
-        self.root.configure(bg=BG_COLOR)
-
-        self.selected_category = tk.StringVar(value="All")
-        self.current_view = "habits"
-
-        self._build_shell()
-        self.show_habits_view()
-
-    def _build_shell(self):
-        # Top Header Bar
-        header = tk.Frame(self.root, bg=BG_COLOR)
-        header.pack(fill="x", padx=25, pady=(20, 10))
-
-        title_lbl = tk.Label(header, text="🔥 StreakKeeper", font=("Segoe UI", 20, "bold"), fg=TEXT_MAIN, bg=BG_COLOR)
-        title_lbl.pack(side="left")
-
-        # View Switcher (Habit Cards vs Calendar View)
-        nav_box = tk.Frame(header, bg=BG_COLOR)
-        nav_box.pack(side="left", padx=25)
-
-        self.habits_nav_btn = tk.Button(
-            nav_box, text="📋 Habit Cards", font=("Segoe UI", 10, "bold"),
-            bg=ACCENT, fg=TEXT_MAIN, relief="flat", padx=12, pady=5, cursor="hand2",
-            command=self.show_habits_view
-        )
-        self.habits_nav_btn.pack(side="left", padx=4)
-
-        self.calendar_nav_btn = tk.Button(
-            nav_box, text="📅 Calendar View", font=("Segoe UI", 10, "bold"),
-            bg=CARD_BG, fg=TEXT_MUTED, relief="flat", padx=12, pady=5, cursor="hand2",
-            command=self.show_calendar_view
-        )
-        self.calendar_nav_btn.pack(side="left", padx=4)
-
-        add_btn = tk.Button(
-            header,
-            text="+ Add Habit",
-            command=self._open_add_dialog,
-            font=("Segoe UI", 10, "bold"),
-            bg=SUCCESS,
-            fg=TEXT_MAIN,
-            relief="flat",
-            padx=14,
-            pady=5,
-            cursor="hand2"
-        )
-        add_btn.pack(side="right")
-
-        # Main Content Container
-        self.main_container = tk.Frame(self.root, bg=BG_COLOR)
-        self.main_container.pack(fill="both", expand=True, padx=25, pady=(5, 15))
-
-    def show_habits_view(self):
-        self.current_view = "habits"
-        self.habits_nav_btn.config(bg=ACCENT, fg=TEXT_MAIN)
-        self.calendar_nav_btn.config(bg=CARD_BG, fg=TEXT_MUTED)
-
-        for w in self.main_container.winfo_children():
-            w.destroy()
-
-        # Category Filter Bar
-        filter_frame = tk.Frame(self.main_container, bg=BG_COLOR)
-        filter_frame.pack(fill="x", pady=(0, 10))
-
-        tk.Label(filter_frame, text="Filter:", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_COLOR).pack(side="left", padx=(0, 8))
-        self.cat_menu = ttk.Combobox(filter_frame, textvariable=self.selected_category, state="readonly", width=16)
-        self.cat_menu.pack(side="left")
-        self.cat_menu.bind("<<ComboboxSelected>>", lambda e: self.refresh_habits())
-
-        today_lbl = tk.Label(filter_frame, text=f"Today: {date.today().strftime('%B %d, %Y')}", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_COLOR)
-        today_lbl.pack(side="right")
-
-        # Scrollable Habit Card Container
-        canvas_container = tk.Frame(self.main_container, bg=BG_COLOR)
-        canvas_container.pack(fill="both", expand=True, pady=5)
-
-        self.scroll_canvas = tk.Canvas(canvas_container, bg=BG_COLOR, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(canvas_container, orient="vertical", command=self.scroll_canvas.yview)
-        
-        self.cards_frame = tk.Frame(self.scroll_canvas, bg=BG_COLOR)
-        self.cards_frame.bind(
-            "<Configure>",
-            lambda e: self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
-        )
-
-        self.canvas_window = self.scroll_canvas.create_window((0, 0), window=self.cards_frame, anchor="nw")
-        self.scroll_canvas.configure(xscrollcommand=scrollbar.set, yscrollcommand=scrollbar.set)
-        self.scroll_canvas.bind("<Configure>", lambda event: self.scroll_canvas.itemconfig(self.canvas_window, width=event.width))
-
-        self.scroll_canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        self.refresh_habits()
-
-    def show_calendar_view(self):
-        self.current_view = "calendar"
-        self.calendar_nav_btn.config(bg=ACCENT, fg=TEXT_MAIN)
-        self.habits_nav_btn.config(bg=CARD_BG, fg=TEXT_MUTED)
-
-        for w in self.main_container.winfo_children():
-            w.destroy()
-
-        cal_view = CalendarView(self.main_container, self.tracker, on_update_callback=self.handle_data_update)
-        cal_view.pack(fill="both", expand=True)
-
-    def handle_data_update(self):
-        if self.current_view == "habits":
-            self.refresh_habits()
-
-    def _open_add_dialog(self):
-        AddHabitDialog(self.root, on_submit_callback=self._handle_add_habit)
-
-    def _handle_add_habit(self, name: str, category: str, h_type: str, target: int, unit: str) -> bool:
-        try:
-            if h_type == "countable":
-                self.tracker.add_countable_habit(name=name, category=category, target=target, unit=unit)
-            else:
-                self.tracker.add_boolean_habit(name=name, category=category)
-            
-            if self.current_view == "habits":
-                self.refresh_habits()
-            else:
-                self.show_calendar_view()
-            return True
-        except ValueError as e:
-            messagebox.showerror("Error", str(e))
-            return False
-
-    def refresh_habits(self):
-        """Clears and re-renders all habit cards based on current filter."""
-        # Update categories dropdown
-        categories = ["All"] + self.tracker.get_categories()
-        self.cat_menu["values"] = categories
-        if self.selected_category.get() not in categories:
-            self.selected_category.set("All")
-
-        # Destroy old cards
-        for widget in self.cards_frame.winfo_children():
-            widget.destroy()
-
-        selected = self.selected_category.get()
-        if selected == "All":
-            habits = self.tracker.get_all_habits()
-        else:
-            habits = self.tracker.get_habits_by_category(selected)
-
-        if not habits:
-            empty_lbl = tk.Label(
-                self.cards_frame,
-                text="No habits yet! Click '+ Add Habit' above to get started.",
-                font=("Segoe UI", 11),
-                fg=TEXT_MUTED,
-                bg=BG_COLOR,
-                pady=40
-            )
-            empty_lbl.pack(fill="x")
-            return
-
-        for habit in habits:
-            self._render_habit_card(habit)
-
-    def _render_habit_card(self, habit):
-        card = tk.Frame(self.cards_frame, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER_COLOR, padx=16, pady=14)
-        card.pack(fill="x", pady=6)
-
-        left_col = tk.Frame(card, bg=CARD_BG)
-        left_col.pack(side="left", fill="x", expand=True)
-
-        cat_tag = tk.Label(left_col, text=habit.category.upper(), font=("Segoe UI", 8, "bold"), fg=ACCENT, bg=CARD_BG)
-        cat_tag.pack(anchor="w")
-
-        name_btn = tk.Button(
-            left_col,
-            text=habit.name,
-            font=("Segoe UI", 13, "bold"),
-            fg=TEXT_MAIN,
-            bg=CARD_BG,
-            activeforeground=ACCENT,
-            activebackground=CARD_BG,
-            relief="flat",
-            anchor="w",
-            cursor="hand2",
-            command=lambda n=habit.name: self._open_detail_dialog(n)
-        )
-        name_btn.pack(anchor="w", pady=(2, 2))
-
-        # Stats info line
-        stats_data = self.tracker.get_habit_stats(habit.name)
-        curr_streak = stats_data.get("current_streak", 0)
-        streak_text = f"🔥 {curr_streak} day streak" if curr_streak > 0 else "💤 Streak at 0"
-
-        info_lbl = tk.Label(
-            left_col,
-            text=f"{streak_text}  •  Best: {stats_data.get('best_streak', 0)}d  •  Completed: {stats_data.get('total_completions', 0)} times",
-            font=("Segoe UI", 9),
-            fg=TEXT_MUTED,
-            bg=CARD_BG
-        )
-        info_lbl.pack(anchor="w")
-
-        # Right Column (Action Buttons)
-        right_col = tk.Frame(card, bg=CARD_BG)
-        right_col.pack(side="right", padx=(10, 0))
-
-        is_done = habit.is_done_today()
-
-        if isinstance(habit, CountableHabit):
-            today_count = habit.get_count()
-            count_lbl = tk.Label(
-                right_col,
-                text=f"{today_count}/{habit.target} {habit.unit}",
-                font=("Segoe UI", 10, "bold"),
-                fg=SUCCESS if is_done else TEXT_MUTED,
-                bg=CARD_BG
-            )
-            count_lbl.pack(side="top", pady=(0, 4))
-
-            btn_box = tk.Frame(right_col, bg=CARD_BG)
-            btn_box.pack()
-
-            add_one_btn = tk.Button(
-                btn_box,
-                text="+1",
-                command=lambda n=habit.name: self._record_count(n, 1),
-                font=("Segoe UI", 9, "bold"),
-                bg=ACCENT,
-                fg=TEXT_MAIN,
-                relief="flat",
-                padx=8,
-                pady=2,
-                cursor="hand2"
-            )
-            add_one_btn.pack(side="left", padx=2)
-
-            toggle_btn = tk.Button(
-                btn_box,
-                text="Done" if not is_done else "Undo",
-                command=lambda n=habit.name, d=is_done: self._toggle_habit(n, d),
-                font=("Segoe UI", 9, "bold"),
-                bg=SUCCESS if not is_done else SUCCESS_MUTED,
-                fg=TEXT_MAIN,
-                relief="flat",
-                padx=10,
-                pady=2,
-                cursor="hand2"
-            )
-            toggle_btn.pack(side="left", padx=2)
-        else:
-            # Boolean Habit
-            action_btn = tk.Button(
-                right_col,
-                text="✓ Done Today" if is_done else "Mark Done",
-                command=lambda n=habit.name, d=is_done: self._toggle_habit(n, d),
-                font=("Segoe UI", 10, "bold"),
-                bg=SUCCESS if is_done else CARD_BG,
-                fg=TEXT_MAIN if is_done else ACCENT,
-                highlightthickness=1 if not is_done else 0,
-                highlightbackground=ACCENT,
-                relief="flat",
-                padx=14,
-                pady=6,
-                cursor="hand2"
-            )
-            action_btn.pack()
-
-    def _toggle_habit(self, name: str, is_currently_done: bool):
-        if is_currently_done:
-            self.tracker.unmark_habit_done(name)
-        else:
-            self.tracker.mark_habit_done(name)
-        self.refresh_habits()
-
-    def _record_count(self, name: str, amount: int):
-        self.tracker.record_habit_progress(name, amount)
-        self.refresh_habits()
-
-    def _open_detail_dialog(self, name: str):
-        HabitDetailDialog(self.root, self.tracker, name, on_update_callback=self.refresh_habits)

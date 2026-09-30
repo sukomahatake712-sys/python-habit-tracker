@@ -1,225 +1,298 @@
-﻿"""
-habit.py - Core Data Models (OOP & Encapsulation Showcase)
-
-Module Map:
-- Module 6: Type Conversion (ISO date strings <-> date objects)
-- Module 7: Core Data Structures (set for history, dict for serialization)
-- Module 8: Control Flow Statements (input validation, conditionals)
-- Module 12: Object Oriented Programming (Encapsulation, Inheritance, Polymorphism)
-"""
-
-from datetime import date
-from typing import Set, Dict, Any, Optional
+import json
+import os
+from datetime import date, timedelta
 
 
 class Habit:
-    """
-    Base class representing a general Habit.
-    Demonstrates OOP concepts: encapsulation, properties, validation, and serialization.
-    """
-
-    def __init__(self, name: str, category: str = "General", created_date: Optional[str] = None):
-        self.name = name  # Uses property setter for validation
+    def __init__(self, name, category='General', created_date=None):
+        self.name = name
         self.category = category
-        self._created_date = created_date or date.today().isoformat()
-        self._history: Set[str] = set()
+        self.created_date = created_date or date.today().isoformat()
+        self.history = set()
 
     @property
-    def name(self) -> str:
-        """Getter for habit name."""
+    def name(self):
         return self._name
 
     @name.setter
-    def name(self, value: str) -> None:
-        """Setter for habit name with validation (non-empty string required)."""
+    def name(self, value):
         if not isinstance(value, str) or not value.strip():
-            raise ValueError("Habit name must be a non-empty string.")
+            raise ValueError('Habit name cannot be empty')
         self._name = value.strip()
 
-    @property
-    def category(self) -> str:
-        """Getter for category."""
-        return self._category
-
-    @category.setter
-    def category(self, value: str) -> None:
-        """Setter for category."""
-        self._category = value.strip() if isinstance(value, str) and value.strip() else "General"
-
-    @property
-    def created_date(self) -> str:
-        """Returns the ISO formatted date string when the habit was created."""
-        return self._created_date
-
-    @property
-    def history(self) -> Set[str]:
-        """Encapsulation: returns a copy of the history set to prevent external mutation."""
-        return set(self._history)
-
-    def mark_done(self, target_date: Optional[str] = None) -> bool:
-        """
-        Marks the habit as done for the given ISO date string (defaults to today).
-        Returns True if marked as completed.
-        """
-        day_str = target_date or date.today().isoformat()
-        self._history.add(day_str)
+    def mark_done(self, target_date=None):
+        day = target_date or date.today().isoformat()
+        self.history.add(day)
         return True
 
-    def unmark_done(self, target_date: Optional[str] = None) -> bool:
-        """Removes the habit completion for the given date."""
-        day_str = target_date or date.today().isoformat()
-        if day_str in self._history:
-            self._history.remove(day_str)
+    def unmark_done(self, target_date=None):
+        day = target_date or date.today().isoformat()
+        if day in self.history:
+            self.history.remove(day)
             return True
         return False
 
-    def is_done_today(self) -> bool:
-        """Checks if the habit is marked done today."""
-        return date.today().isoformat() in self._history
+    def is_done_today(self):
+        return date.today().isoformat() in self.history
 
-    def is_done_on(self, day_str: str) -> bool:
-        """Checks if the habit is marked done on a specific ISO date."""
-        return day_str in self._history
+    def is_done_on(self, day_str):
+        return day_str in self.history
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Serializes the habit instance to a JSON-compatible dictionary."""
+    def to_dict(self):
         return {
-            "type": "base",
-            "name": self._name,
-            "category": self._category,
-            "created_date": self._created_date,
-            "history": sorted(list(self._history)),
+            'type': 'boolean',
+            'name': self._name,
+            'category': self.category,
+            'created_date': self.created_date,
+            'history': sorted(list(self.history))
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Habit":
-        """Factory method to construct Habit or appropriate subclass from dictionary."""
-        habit_type = data.get("type", "boolean")
-        if habit_type == "countable":
+    def from_dict(cls, data):
+        if data.get('type') == 'countable':
             return CountableHabit.from_dict(data)
-        elif habit_type == "boolean":
-            return BooleanHabit.from_dict(data)
-
-        # Fallback base habit
-        habit = cls(data["name"], data.get("category", "General"), data.get("created_date"))
-        habit._history = set(data.get("history", []))
-        return habit
-
-    def __str__(self) -> str:
-        return f"[{self.category}] {self.name} - Completed {len(self._history)} times"
-
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}(name='{self.name}', category='{self.category}')>"
+        return BooleanHabit.from_dict(data)
 
 
 class BooleanHabit(Habit):
-    """
-    Subclass representing simple binary done/not-done habits (e.g. Meditate, Journaling).
-    Demonstrates inheritance and polymorphism.
-    """
-
-    def to_dict(self) -> Dict[str, Any]:
-        data = super().to_dict()
-        data["type"] = "boolean"
-        return data
-
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BooleanHabit":
-        habit = cls(data["name"], data.get("category", "General"), data.get("created_date"))
-        habit._history = set(data.get("history", []))
+    def from_dict(cls, data):
+        habit = cls(data['name'], data.get('category', 'General'), data.get('created_date'))
+        habit.history = set(data.get('history', []))
         return habit
 
 
 class CountableHabit(Habit):
-    """
-    Subclass representing habits that require reaching a numerical target per day.
-    (e.g., Drink 8 glasses of water, 50 pushups).
-    Demonstrates method overriding, custom state, and target completion checks.
-    """
-
-    def __init__(
-        self,
-        name: str,
-        category: str = "General",
-        target: int = 1,
-        unit: str = "times",
-        created_date: Optional[str] = None,
-    ):
+    def __init__(self, name, category='General', target=1, unit='times', created_date=None):
         super().__init__(name, category, created_date)
         self.target = target
         self.unit = unit
-        # Map: "YYYY-MM-DD" -> current count
-        self._daily_counts: Dict[str, int] = {}
+        self.daily_counts = {}
 
     @property
-    def target(self) -> int:
+    def target(self):
         return self._target
 
     @target.setter
-    def target(self, val: int) -> None:
+    def target(self, val):
         if not isinstance(val, int) or val <= 0:
-            raise ValueError("Target must be a positive integer.")
+            raise ValueError('Target must be a positive number')
         self._target = val
 
-    @property
-    def daily_counts(self) -> Dict[str, int]:
-        return dict(self._daily_counts)
+    def get_count(self, target_date=None):
+        day = target_date or date.today().isoformat()
+        return self.daily_counts.get(day, 0)
 
-    def get_count(self, target_date: Optional[str] = None) -> int:
-        day_str = target_date or date.today().isoformat()
-        return self._daily_counts.get(day_str, 0)
-
-    def record_progress(self, amount: int = 1, target_date: Optional[str] = None) -> bool:
-        """
-        Increments the progress for the day.
-        If the target is reached, automatically marks the day as done.
-        """
-        day_str = target_date or date.today().isoformat()
-        current = self._daily_counts.get(day_str, 0) + amount
-        self._daily_counts[day_str] = current
-
-        if current >= self._target:
-            self._history.add(day_str)
+    def record_progress(self, amount=1, target_date=None):
+        day = target_date or date.today().isoformat()
+        total = self.daily_counts.get(day, 0) + amount
+        self.daily_counts[day] = total
+        if total >= self.target:
+            self.history.add(day)
             return True
         return False
 
-    def mark_done(self, target_date: Optional[str] = None) -> bool:
-        """Marks habit complete by setting count directly to target if needed."""
-        day_str = target_date or date.today().isoformat()
-        self._daily_counts[day_str] = max(self._daily_counts.get(day_str, 0), self._target)
-        self._history.add(day_str)
+    def mark_done(self, target_date=None):
+        day = target_date or date.today().isoformat()
+        self.daily_counts[day] = max(self.daily_counts.get(day, 0), self.target)
+        self.history.add(day)
         return True
 
-    def unmark_done(self, target_date: Optional[str] = None) -> bool:
-        day_str = target_date or date.today().isoformat()
-        self._daily_counts[day_str] = 0
-        return super().unmark_done(day_str)
+    def unmark_done(self, target_date=None):
+        day = target_date or date.today().isoformat()
+        self.daily_counts[day] = 0
+        return super().unmark_done(day)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self):
         data = super().to_dict()
-        data["type"] = "countable"
-        data["target"] = self._target
-        data["unit"] = self.unit
-        data["daily_counts"] = self._daily_counts
+        data['type'] = 'countable'
+        data['target'] = self.target
+        data['unit'] = self.unit
+        data['daily_counts'] = self.daily_counts
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CountableHabit":
+    def from_dict(cls, data):
         habit = cls(
-            name=data["name"],
-            category=data.get("category", "General"),
-            target=data.get("target", 1),
-            unit=data.get("unit", "times"),
-            created_date=data.get("created_date"),
+            data['name'],
+            data.get('category', 'General'),
+            data.get('target', 1),
+            data.get('unit', 'times'),
+            data.get('created_date')
         )
-        habit._history = set(data.get("history", []))
-        habit._daily_counts = data.get("daily_counts", {})
+        habit.history = set(data.get('history', []))
+        habit.daily_counts = data.get('daily_counts', {})
         return habit
 
-    def __str__(self) -> str:
-        today_str = date.today().isoformat()
-        today_count = self.get_count(today_str)
-        return (
-            f"[{self.category}] {self.name} - Progress: {today_count}/{self.target} {self.unit} "
-            f"(Completed {len(self._history)} days)"
-        )
+
+def calculate_current_streak(history, reference_date=None):
+    if not history:
+        return 0
+    ref = reference_date or date.today()
+    today_str = ref.isoformat()
+    yesterday_str = (ref - timedelta(days=1)).isoformat()
+
+    if today_str in history:
+        curr = ref
+    elif yesterday_str in history:
+        curr = ref - timedelta(days=1)
+    else:
+        return 0
+
+    streak = 0
+    while curr.isoformat() in history:
+        streak += 1
+        curr -= timedelta(days=1)
+    return streak
+
+
+def calculate_best_streak(history):
+    if not history:
+        return 0
+    sorted_days = sorted([date.fromisoformat(d) for d in history])
+    best = 0
+    current = 0
+    prev = None
+
+    for d in sorted_days:
+        if prev is None:
+            current = 1
+        else:
+            diff = (d - prev).days
+            if diff == 1:
+                current += 1
+            elif diff > 1:
+                current = 1
+        if current > best:
+            best = current
+        prev = d
+    return best
+
+
+def calculate_completion_rate(history, days=30, reference_date=None):
+    if days <= 0:
+        return 0.0
+    ref = reference_date or date.today()
+    cutoff = ref - timedelta(days=days - 1)
+    completed = sum(1 for d in history if cutoff <= date.fromisoformat(d) <= ref)
+    return round((completed / days) * 100, 1)
+
+
+def get_heatmap_data(history, weeks=12, end_date=None):
+    ref = end_date or date.today()
+    days_to_sunday = (6 - ref.weekday()) % 7
+    cal_end = ref + timedelta(days=days_to_sunday)
+    cal_start = cal_end - timedelta(weeks=weeks) + timedelta(days=1)
+
+    grid = [[False for _ in range(weeks)] for _ in range(7)]
+    curr = cal_start
+    col = 0
+    while curr <= cal_end and col < weeks:
+        row = curr.weekday()
+        if curr.isoformat() in history:
+            grid[row][col] = True
+        if row == 6:
+            col += 1
+        curr += timedelta(days=1)
+    return grid
+
+
+class HabitTracker:
+    def __init__(self, filepath='data/habits.json'):
+        self.filepath = filepath
+        self.habits = self.load()
+
+    def load(self):
+        if not os.path.exists(self.filepath):
+            return {}
+        try:
+            with open(self.filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return {k: Habit.from_dict(v) for k, v in data.items()}
+        except Exception:
+            return {}
+
+    def save(self):
+        os.makedirs(os.path.dirname(self.filepath) or '.', exist_ok=True)
+        with open(self.filepath, 'w', encoding='utf-8') as f:
+            json.dump({k: v.to_dict() for k, v in self.habits.items()}, f, indent=2)
+
+    def add_boolean_habit(self, name, category='General'):
+        if name in self.habits:
+            raise ValueError(f'Habit {name} already exists')
+        habit = BooleanHabit(name, category)
+        self.habits[name] = habit
+        self.save()
+        return habit
+
+    def add_countable_habit(self, name, target, unit='times', category='General'):
+        if name in self.habits:
+            raise ValueError(f'Habit {name} already exists')
+        habit = CountableHabit(name, category, target, unit)
+        self.habits[name] = habit
+        self.save()
+        return habit
+
+    def remove_habit(self, name):
+        if name in self.habits:
+            del self.habits[name]
+            self.save()
+            return True
+        return False
+
+    def get_habit(self, name):
+        return self.habits.get(name)
+
+    def get_all_habits(self):
+        return sorted(self.habits.values(), key=lambda h: (h.category, h.name))
+
+    def get_habits_by_category(self, category):
+        return [h for h in self.habits.values() if h.category.lower() == category.lower()]
+
+    def get_categories(self):
+        cats = {h.category for h in self.habits.values()}
+        return sorted(list(cats)) if cats else ['General']
+
+    def mark_habit_done(self, name, date_str=None):
+        habit = self.get_habit(name)
+        if habit:
+            res = habit.mark_done(date_str)
+            self.save()
+            return res
+        return False
+
+    def unmark_habit_done(self, name, date_str=None):
+        habit = self.get_habit(name)
+        if habit:
+            res = habit.unmark_done(date_str)
+            self.save()
+            return res
+        return False
+
+    def record_habit_progress(self, name, amount=1, date_str=None):
+        habit = self.get_habit(name)
+        if not habit:
+            return False
+        if isinstance(habit, CountableHabit):
+            res = habit.record_progress(amount, date_str)
+        else:
+            res = habit.mark_done(date_str)
+        self.save()
+        return res
+
+    def get_habit_stats(self, name):
+        habit = self.get_habit(name)
+        if not habit:
+            return {}
+        h = habit.history
+        return {
+            'name': habit.name,
+            'category': habit.category,
+            'is_done_today': habit.is_done_today(),
+            'total_completions': len(h),
+            'current_streak': calculate_current_streak(h),
+            'best_streak': calculate_best_streak(h),
+            'completion_rate_30d': calculate_completion_rate(h, 30),
+            'completion_rate_7d': calculate_completion_rate(h, 7),
+            'heatmap_matrix': get_heatmap_data(h, 12),
+        }
